@@ -17,6 +17,10 @@ import requests.exceptions
 
 import markdownify
 import requests
+from urllib3.exceptions import InsecureRequestWarning
+# 忽略证书警告
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 from bs4 import BeautifulSoup
 from colorama import Fore
 from selenium.common import TimeoutException
@@ -31,20 +35,33 @@ from src.Utils.log_manager import fail
 from src.Utils.text_builder import filename_filter
 
 
-def run_xianzhi_crawler():
+def run_xianzhi_crawler(
+        xianzhi_page_start=None,
+        xianzhi_page_end=None,
+        xianzhi_400_sleep=None,
+        file_save_path=None,
+        xianzhi_pic_blacklist=None,
+):
     """
     运行Xianzhi爬虫
     :return:
     """
     driver_local = init_local_chrome()
-    if not XIANZHI_PAGE_START or not XIANZHI_PAGE_END:
+    # 参数覆盖配置
+    xianzhi_page_start = xianzhi_page_start if xianzhi_page_start is not None else XIANZHI_PAGE_START
+    xianzhi_page_end = xianzhi_page_end if xianzhi_page_end is not None else XIANZHI_PAGE_END
+    xianzhi_400_sleep = xianzhi_400_sleep if xianzhi_400_sleep is not None else XIANZHI_400_SLEEP
+    file_save_path = file_save_path if file_save_path is not None else FILE_SAVE_PATH
+    xianzhi_pic_blacklist = xianzhi_pic_blacklist if xianzhi_pic_blacklist is not None else XIANZHI_PIC_BLACKLIST
+
+    if not xianzhi_page_start or not xianzhi_page_end:
         tqdm.write(fail("[!] Error - 请先在config.py中设置开始页和结束页"))
         exit(1)
-    xianzhi_crawler_main(driver_local)
+    xianzhi_crawler_main(driver_local, xianzhi_page_start, xianzhi_page_end, xianzhi_400_sleep, file_save_path, xianzhi_pic_blacklist)
     driver_local.quit()
 
 
-def xianzhi_crawler_main(driver):
+def xianzhi_crawler_main(driver, xz_start, xz_end, xz_400_sleep, file_save_path, pic_blacklist):
     """
     处理先知文章，这个别改了，越改复杂度越高，黄线太恶心人了。
     :param driver:
@@ -53,7 +70,7 @@ def xianzhi_crawler_main(driver):
     base_url = 'https://xz.aliyun.com/news/{post_index}'
     cached_title = None  # 缓存上一篇文章的标题
 
-    for post_index in trange(XIANZHI_PAGE_START, XIANZHI_PAGE_END + 1, desc='[+] 正在爬取先知社区文章'):
+    for post_index in trange(xz_start, xz_end + 1, desc='[+] 正在爬取先知社区文章'):
         url = base_url.format(post_index=post_index)
         driver.get(url)
         try:
@@ -75,7 +92,7 @@ def xianzhi_crawler_main(driver):
             soup = BeautifulSoup(driver.page_source, 'html.parser')
             title_tag = soup.find('title')
         post_title = filename_filter(title_tag.text) if title_tag else None
-        filename = os.path.join(FILE_SAVE_PATH, 'xianzhi', f'{post_index}-{post_title}.md')
+        filename = os.path.join(file_save_path, 'xianzhi', f'{post_index}-{post_title}.md')
         if not post_title or ('400 -' in post_title):
             tqdm.write(Fore.RED + f'[!] Error - {post_index} 未找到该文章' + Fore.RESET)
             if XIANZHI_400_SLEEP:
@@ -96,12 +113,12 @@ def xianzhi_crawler_main(driver):
             continue
         img_tags = soup.find_all('img')
         is_image_folder_created('xianzhi')
-        download_images(img_tags, os.path.join(FILE_SAVE_PATH, 'xianzhi', 'images'), random.choice(CRAWLER_HEADERS))
+        download_images(img_tags, os.path.join(file_save_path, 'xianzhi', 'images'), random.choice(CRAWLER_HEADERS), pic_blacklist)
         md_content = markdownify.markdownify(driver.page_source, heading_style="ATX")
         if "请查看其他资讯" in md_content:
             # 发现“请查看其他资讯”，直接跳过
             tqdm.write(Fore.YELLOW + f'[?] WARN - 页面 {post_index} 显示“请查看其他资讯”，跳过' + Fore.RESET)
-            if XIANZHI_400_SLEEP:
+            if xz_400_sleep:
                 actual_sleep_time = SLEEP_TIME + random.uniform(-SLEEP_TIME_DELTA, SLEEP_TIME_DELTA)
                 time.sleep(actual_sleep_time)
             continue
@@ -240,7 +257,7 @@ def download_image(img_src, images_path, crawler_headers):
         f.write(img_pic)
 
 
-def download_images(img_tags, images_path, crawler_headers, max_threads=THREADS_NUM):
+def download_images(img_tags, images_path, crawler_headers, pic_blacklist, max_threads=THREADS_NUM):
     """
     下载图片的函数（多线程，限制线程数量）
     :param img_tags: 图片标签列表
@@ -254,11 +271,11 @@ def download_images(img_tags, images_path, crawler_headers, max_threads=THREADS_
     for img_tag in img_tags:
         img_src = img_tag.get("src")
         # 创建一个线程来下载图片
-        thread = threading.Thread(target=download_image_with_session, args=(img_src, images_path, session))
+        thread = threading.Thread(target=download_image_with_session, args=(img_src, images_path, session, pic_blacklist))
         thread.start()
 
 
-def download_image_with_session(img_src, images_path, session):
+def download_image_with_session(img_src, images_path, session, pic_blacklist):
     """
     使用session的单个图片下载函数，增强错误处理
     """
@@ -268,7 +285,7 @@ def download_image_with_session(img_src, images_path, session):
             return
 
         # 黑名单检查
-        if any(blacklisted in img_src for blacklisted in XIANZHI_PIC_BLACKLIST):
+        if any(blacklisted in img_src for blacklisted in pic_blacklist):
             return
 
         # 处理相对路径

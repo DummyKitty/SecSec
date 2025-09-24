@@ -28,42 +28,62 @@ from src.Utils.log_manager import fail
 from src.Utils.text_builder import filename_filter
 
 
-def run_freebuf_crawler():
+def run_freebuf_crawler(
+        freebuf_category=None,
+        freebuf_page_start=None,
+        freebuf_page_end=None,
+        freebuf_page_config=None,
+        file_save_path=None,
+):
     """
     运行 FreeBuf 爬虫
     """
     driver_local = init_local_chrome()
-    if not FREEBUF_CATEGORY:
+    # 覆盖配置
+    freebuf_category = freebuf_category if freebuf_category is not None else FREEBUF_CATEGORY
+    file_save_path = file_save_path if file_save_path is not None else FILE_SAVE_PATH
+    if freebuf_page_config is None:
+        freebuf_page_config = FREEBUF_PAGE_CONFIG if 'FREEBUF_PAGE_CONFIG' in globals() else None
+
+    if not freebuf_category:
         tqdm.write(fail("[!] Error - 未配置 FreeBuf 分类，请检查 config.py 文件"))
         exit(1)
 
     # 检查是否使用新的分页配置
-    use_new_config = hasattr(sys.modules['config'], 'FREEBUF_PAGE_CONFIG')
+    use_new_config = freebuf_page_config is not None
 
     # 如果没有新配置，检查旧配置是否存在
-    if not use_new_config and (not FREEBUF_PAGE_START or not FREEBUF_PAGE_END):
+    if not use_new_config and (not (freebuf_page_start if freebuf_page_start is not None else FREEBUF_PAGE_START) or not (freebuf_page_end if freebuf_page_end is not None else FREEBUF_PAGE_END)):
         tqdm.write(fail("[!] Error - 未配置 FreeBuf 初始页数，请检查 config.py 文件"))
         exit(1)
 
-    freebuf_crawler_main(driver_local, use_new_config)
+    freebuf_crawler_main(
+        driver_local,
+        use_new_config,
+        freebuf_category,
+        freebuf_page_start if freebuf_page_start is not None else FREEBUF_PAGE_START,
+        freebuf_page_end if freebuf_page_end is not None else FREEBUF_PAGE_END,
+        freebuf_page_config,
+        file_save_path,
+    )
     driver_local.quit()
 
 
-def freebuf_crawler_main(driver, use_new_config):
+def freebuf_crawler_main(driver, use_new_config, freebuf_category, freebuf_page_start, freebuf_page_end, freebuf_page_config, file_save_path):
     """
     处理FreeBuf文章的主函数
     :param driver: 浏览器驱动
     :param use_new_config: 是否使用新的分页配置
     """
-    for category in FREEBUF_CATEGORY:
+    for category in freebuf_category:
         # 确定当前分类的开始页和结束页
-        if use_new_config and category in FREEBUF_PAGE_CONFIG:
-            start_page = FREEBUF_PAGE_CONFIG[category][0]
-            end_page = FREEBUF_PAGE_CONFIG[category][1]
+        if use_new_config and category in freebuf_page_config:
+            start_page = freebuf_page_config[category][0]
+            end_page = freebuf_page_config[category][1]
         else:
             # 使用默认配置
-            start_page = FREEBUF_PAGE_START
-            end_page = FREEBUF_PAGE_END
+            start_page = freebuf_page_start
+            end_page = freebuf_page_end
 
         tqdm.write(f'[*] Info - 开始爬取 FreeBuf {category} 分类，页面范围: {start_page}-{end_page}')
 
@@ -73,7 +93,7 @@ def freebuf_crawler_main(driver, use_new_config):
                 tqdm.write(Fore.GREEN + f'[*] Info - FreeBuf {category} 分类爬取完成')
                 break
             for post in page_json['data']['data_list']:
-                process_post(category, post, driver)
+                process_post(category, post, driver, file_save_path)
             actual_sleep_time = SLEEP_TIME + random.uniform(-SLEEP_TIME_DELTA, SLEEP_TIME_DELTA)
             time.sleep(actual_sleep_time)
 
@@ -97,7 +117,7 @@ def get_page_data(category, category_page):
         tqdm.write(Fore.RED + f'[!] Error - 请求出错: {e}' + Fore.RESET)
 
 
-def process_post(category, post, driver):
+def process_post(category, post, driver, file_save_path):
     """
     处理单个文章
     :param category: 分类
@@ -109,7 +129,7 @@ def process_post(category, post, driver):
     post_index = post['ID']
     post_title = post['post_title']
     post_is_paid = post['paid_read']
-    filename = os.path.join(FILE_SAVE_PATH, 'freebuf',
+    filename = os.path.join(file_save_path, 'freebuf',
                             post_index + "-" + filename_filter(post_title) + '.md')
 
     if post_is_paid:
@@ -126,7 +146,7 @@ def process_post(category, post, driver):
 
     img_tags = soup.find_all('img')
     is_image_folder_created('freebuf')
-    download_images(img_tags, os.path.join(FILE_SAVE_PATH, 'freebuf', 'images'),
+    download_images(img_tags, os.path.join(file_save_path, 'freebuf', 'images'),
                     random.choice(CRAWLER_HEADERS))
 
     md_content = markdownify.markdownify(driver.page_source, heading_style="ATX")
@@ -264,7 +284,7 @@ def run_freebuf_crawler_by_id(lines):
     driver_local.quit()
 
 
-def process_post_reload(category, post_index, post_title, driver):
+def process_post_reload(category, post_index, post_title, driver, file_save_path=None):
     """
     重新下载某一篇文章
     :param category: 分类
@@ -274,7 +294,8 @@ def process_post_reload(category, post_index, post_title, driver):
     """
     base_url = r'https://www.freebuf.com/articles/{category}/{post_index}.html'
 
-    filename = os.path.join(FILE_SAVE_PATH, 'freebuf',
+    file_save_path = file_save_path if file_save_path is not None else FILE_SAVE_PATH
+    filename = os.path.join(file_save_path, 'freebuf',
                             post_index + "-" + filename_filter(post_title) + '.md')
     post_url = base_url.format(category=category, post_index=post_index)
     driver.get(post_url)
@@ -283,7 +304,7 @@ def process_post_reload(category, post_index, post_title, driver):
     img_tags = soup.find_all('img')
     is_image_folder_created('freebuf')
 
-    download_images(img_tags, os.path.join(FILE_SAVE_PATH, 'freebuf', 'images'),
+    download_images(img_tags, os.path.join(file_save_path, 'freebuf', 'images'),
                     random.choice(CRAWLER_HEADERS))
 
     md_content = markdownify.markdownify(driver.page_source, heading_style="ATX")

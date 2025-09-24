@@ -7,6 +7,14 @@
 # @Project : SecSec
 from src.Base.args_handler import parse_args
 from src.Base.bootstrap import bootstrap
+try:
+    from gooey import Gooey
+except Exception:
+    Gooey = lambda **kwargs: (lambda f: f)
+
+@Gooey(program_name="SecSec", optional_cols=1, default_size=(900, 700))
+def main():
+    bootstrap()
 
 if __name__ == '__main__':
-    bootstrap()
+    main()

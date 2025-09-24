@@ -11,7 +11,7 @@
 # driver路径
 DRIVER_PATH = r'chromedriver.exe'
 # 文件路径
-FILE_SAVE_PATH = r'D:\Workstation\TextWorkSpace\LocalForum'
+FILE_SAVE_PATH = r'D:\work\Offline_Doc\SecSec'
 # 请求头
 CRAWLER_HEADERS = [
     {
@@ -46,10 +46,10 @@ FREEBUF_PIC_BLACKLIST = [
 # ? 先知爬虫设置 -----
 # 先知的反爬很恶心，会让你滑动解锁。
 # 设置默认开始页
-# XIANZHI_PAGE_START = 16160
-XIANZHI_PAGE_START = 1
+XIANZHI_PAGE_START = 12747
+# XIANZHI_PAGE_START = 1
 # 设置默认结束页面
-XIANZHI_PAGE_END = 17853
+XIANZHI_PAGE_END = 18584
 # 图片黑名单，不让其重复下载浪费时间
 XIANZHI_PIC_BLACKLIST = [
     "default_avatar.png",
