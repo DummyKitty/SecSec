@@ -11,7 +11,7 @@
 # driver路径
 DRIVER_PATH = r'chromedriver.exe'
 # 文件路径
-FILE_SAVE_PATH = r'D:\work\Offline_Doc\SecSec'
+FILE_SAVE_PATH = r'D:\Offline'
 # 请求头
 CRAWLER_HEADERS = [
     {

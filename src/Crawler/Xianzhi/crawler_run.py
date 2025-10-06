@@ -112,7 +112,7 @@ def xianzhi_crawler_main(driver, xz_start, xz_end, xz_400_sleep, file_save_path,
             tqdm.write(f'[*] Info - {post_index}-{post_title} 已经爬取过，跳过')
             continue
         img_tags = soup.find_all('img')
-        is_image_folder_created('xianzhi')
+        is_image_folder_created('xianzhi', file_save_path)
         download_images(img_tags, os.path.join(file_save_path, 'xianzhi', 'images'), random.choice(CRAWLER_HEADERS), pic_blacklist)
         md_content = markdownify.markdownify(driver.page_source, heading_style="ATX")
         if "请查看其他资讯" in md_content:

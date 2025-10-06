@@ -5,9 +5,11 @@
 # @Blog : https://natro92.fun
 # @File : Bootstrap
 # @Project : SecSec
+import os
 from colorama import init
 
 from src.Base.args_handler import parse_args
+from src.Utils.file_manager import ensure_directory_exists
 
 
 def bootstrap():

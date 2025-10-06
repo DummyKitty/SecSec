@@ -13,13 +13,25 @@ from config import FILE_SAVE_PATH
 _checked_directories = set()
 
 
-def is_image_folder_created(folder_name):
+def is_image_folder_created(folder_name, base_path=None):
     """
     判断图片文件夹是否创建
+    :param folder_name: 文件夹名称 (如 'freebuf', 'xianzhi', 'butian')
+    :param base_path: 基础保存路径，如果为None则使用配置文件中的路径
     :return:
     """
-    if not os.path.exists(os.path.join(FILE_SAVE_PATH, folder_name, 'images')):
-        os.makedirs(os.path.join(FILE_SAVE_PATH, folder_name, 'images'))
+    if base_path is None:
+        base_path = FILE_SAVE_PATH
+    
+    images_path = os.path.join(base_path, folder_name, 'images')
+    
+    if not os.path.exists(images_path):
+        try:
+            os.makedirs(images_path, exist_ok=True)
+            print(f"[*] Info - 已创建 {folder_name} 图片目录: {images_path}")
+        except OSError as e:
+            print(f"[!] Error - 创建 {folder_name} 图片目录失败: {images_path}, 错误: {e}")
+            raise
 
 
 def ensure_directory_exists(path):

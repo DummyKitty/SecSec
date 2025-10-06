@@ -145,7 +145,7 @@ def process_post(category, post, driver, file_save_path):
     soup = BeautifulSoup(driver.page_source, 'html.parser')
 
     img_tags = soup.find_all('img')
-    is_image_folder_created('freebuf')
+    is_image_folder_created('freebuf', file_save_path)
     download_images(img_tags, os.path.join(file_save_path, 'freebuf', 'images'),
                     random.choice(CRAWLER_HEADERS))
 
@@ -302,7 +302,7 @@ def process_post_reload(category, post_index, post_title, driver, file_save_path
 
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     img_tags = soup.find_all('img')
-    is_image_folder_created('freebuf')
+    is_image_folder_created('freebuf', file_save_path)
 
     download_images(img_tags, os.path.join(file_save_path, 'freebuf', 'images'),
                     random.choice(CRAWLER_HEADERS))

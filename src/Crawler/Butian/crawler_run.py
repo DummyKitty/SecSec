@@ -60,7 +60,7 @@ def butian_crawler_main(driver, butian_category, butian_page_start, butian_page_
     :param driver: 浏览器驱动
     """
     base_url = r'https://forum.butian.net/{category}/{post_index}'
-    is_image_folder_created('butian')
+    is_image_folder_created('butian', file_save_path)
 
     for category in butian_category:
         for post_index in trange(butian_page_start, butian_page_end, desc='[+] 正在爬取 Butian 文章'):
@@ -321,7 +321,7 @@ def process_post_reload(category, post_index, post_title, driver, file_save_path
     driver.get(post_url)
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     img_tags = soup.find_all('img')
-    is_image_folder_created('butian')
+    is_image_folder_created('butian', file_save_path)
     download_images(img_tags, os.path.join(file_save_path, 'butian', 'images'),
                     random.choice(CRAWLER_HEADERS))
     md_content = markdownify.markdownify(driver.page_source)

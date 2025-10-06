@@ -44,9 +44,32 @@ def init_local_chrome():
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument('--ignore-certificate-errors')
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    # options.add_experimental_option("debuggerAddress", "127.0.0.1:9527")
-    # driver = webdriver.Chrome(service=Service(executable_path=DRIVER_PATH), options=options)
-    driver = webdriver.Chrome(options=options)
+    
+    # 检查是否启用无头模式
+    if os.environ.get('SELENIUM_HEADLESS', '').lower() == '1':
+        options.add_argument("--headless")
+        print("[*] Info - 启用无头模式")
+    
+    # 添加更多稳定性选项
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-extensions")
+    
+    # 添加调试选项（如果启用调试模式）
+    if os.environ.get('SELENIUM_DEBUG', '').lower() == '1':
+        options.add_argument("--verbose")
+        options.add_argument("--log-level=0")
+        print("[*] Info - 启用 Selenium 调试模式")
+    
+    # 检查 ChromeDriver 是否存在
+    if os.path.exists(DRIVER_PATH):
+        # 使用本地 ChromeDriver
+        service = Service(executable_path=DRIVER_PATH)
+        driver = webdriver.Chrome(service=service, options=options)
+    else:
+        # 使用系统 PATH 中的 ChromeDriver
+        driver = webdriver.Chrome(options=options)
     
     print(success("[*] Info - 已成功初始化本机Chrome浏览器"))
     return driver
